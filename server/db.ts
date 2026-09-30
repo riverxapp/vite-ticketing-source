@@ -1,10 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Client, InStatement, ResultSet } from "@libsql/client";
+import { httpError, readJson, send } from "./http.js";
+
+export { send };
 
 /**
  * The Data API contract (see DATABASE.md) served from our own server with the
  * private TURSO_* credentials. Used by the Vite dev proxy (scripts/local-db-proxy.ts)
- * and the Vercel function (api/db/[action].ts); each caller does its own auth first.
+ * and the Vercel function (api/db/[action].ts); each caller does its own auth first
+ * and lets only staff (admin, agent) sessions through. Customers use server/portal.ts.
  *
  *   GET  {base}/health
  *   POST {base}/query  { sql, params?, method? }
@@ -24,12 +28,11 @@ const BLOCKED = [
   /\b(insert\s+into|update|delete\s+from)\s+["'`]?(sqlite_|libsql_|__drizzle)/i,
 ];
 
-const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
-
 function assertAllowed(sql: unknown) {
   if (typeof sql !== "string" || !sql.trim()) throw httpError(400, "Missing sql");
   // Auth tables are server-only (server/auth.ts); the browser never reads them.
-  if (/\bauth_(users|sessions)\b/i.test(sql)) throw httpError(403, "Auth tables are not accessible from the browser");
+  // Listed by name: `auth_user_id` columns on users/customers are fine to read. Add new auth_* tables here.
+  if (/\bauth_(users|sessions|password_resets)\b/i.test(sql)) throw httpError(403, "Auth tables are not accessible from the browser");
   const withoutTrailing = sql.trim().replace(/;\s*$/, "");
   if (withoutTrailing.includes(";")) throw httpError(403, "Multiple statements are not allowed");
   if (BLOCKED.some((re) => re.test(withoutTrailing))) {
@@ -52,28 +55,6 @@ function toStatement(q: Query): InStatement {
   return { sql: q.sql, args: (q.params ?? []) as never };
 }
 
-async function readJson(req: IncomingMessage) {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += (chunk as Buffer).length;
-    if (size > MAX_BODY_BYTES) throw httpError(413, "Request too large");
-    chunks.push(chunk as Buffer);
-  }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
-  } catch {
-    throw httpError(400, "Invalid JSON");
-  }
-}
-
-export function send(res: ServerResponse, status: number, body: unknown) {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("Cache-Control", "no-store");
-  res.end(JSON.stringify(body));
-}
-
 /** Serves one Data API action ("health" | "query" | "batch"). */
 export async function handleDbRequest(db: Client, action: string, req: IncomingMessage, res: ServerResponse, mode: string) {
   try {
@@ -83,7 +64,7 @@ export async function handleDbRequest(db: Client, action: string, req: IncomingM
     }
     if (req.method !== "POST") return send(res, 405, { error: "Method not allowed", code: "method" });
 
-    const body = await readJson(req);
+    const body = await readJson(req, MAX_BODY_BYTES);
     if (action === "query") {
       return send(res, 200, toResponse(await db.execute(toStatement(body as Query))));
     }

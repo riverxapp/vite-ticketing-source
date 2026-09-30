@@ -18,19 +18,36 @@ export function AuthProviderRoot({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    setUser(await authApi.signIn(email, password));
-    setError(null);
-  }, []);
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
-    setUser(await authApi.signUp(name, email, password));
-    setError(null);
-  }, []);
+  // Every call that returns a user makes it the session user.
+  const adopt = useCallback(
+    <A extends unknown[]>(call: (...args: A) => Promise<AuthUser>) =>
+      async (...args: A) => {
+        const next = await call(...args);
+        setUser(next);
+        setError(null);
+        return next;
+      },
+    [],
+  );
+
   const signOut = useCallback(async () => {
     await authApi.signOut();
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, loading, error, signIn, signUp, signOut }), [user, loading, error, signIn, signUp, signOut]);
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      error,
+      signIn: adopt(authApi.signIn),
+      signUp: adopt(authApi.signUp),
+      signUpAgent: adopt(authApi.signUpAgent),
+      resetPassword: adopt(authApi.resetPassword),
+      updateProfile: adopt(authApi.updateProfile),
+      signOut,
+    }),
+    [user, loading, error, adopt, signOut],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

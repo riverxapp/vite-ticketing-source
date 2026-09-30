@@ -51,9 +51,3 @@ export const db = drizzle(
   },
   { schema },
 );
-
-export async function checkDatabaseHealth() {
-  return apiRequest<Record<string, unknown>>(`${dbBaseUrl}/health`, {
-    headers: { "x-riverx-key": env.dbKey },
-  });
-}

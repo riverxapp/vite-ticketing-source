@@ -1,11 +1,11 @@
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { crmConfig } from "@/config/crm";
+import { helpdeskConfig } from "@/config/helpdesk";
 
 type PagerProps = { page: number; total: number; onPageChange: (page: number) => void };
 
 export function Pager({ page, total, onPageChange }: PagerProps) {
-  const size = crmConfig.pageSize;
+  const size = helpdeskConfig.pageSize;
   const pages = Math.max(1, Math.ceil(total / size));
   const from = total === 0 ? 0 : page * size + 1;
   const to = Math.min(total, (page + 1) * size);

@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { DatabaseSetup } from "@/components/crm/States";
+import { DatabaseSetup } from "@/components/common/States";
 import { isDatabaseConfigured } from "@/db/client";
 
 /** Data pages render only once a database is connected. */

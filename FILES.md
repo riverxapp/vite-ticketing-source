@@ -1,30 +1,31 @@
 # FILES.md
 
-Structural index for the CRM template.
+Structural index for the helpdesk template.
 
 ## Entry points
 
 - `index.html`: Vite HTML entry (loads fonts and `/src/main.tsx`). Required by Vite.
 - `src/main.tsx`: React mount.
-- `src/app/App.tsx`: providers (theme, auth, tooltips, toasts) + router.
-- `src/app/routes.tsx`: every route. `/`, `/login`, `/signup` are public; `/app/*` requires a session (app pages are lazy-loaded).
+- `src/app/App.tsx`: providers (theme, auth, branding, toasts) + router.
+- `src/app/routes.tsx`: every route. `/`, `/login`, `/signup`, `/agent/signup`, `/forgot-password`, `/reset-password` are public; `/app/*` is for admins and agents, `/portal/*` (dashboard, tickets, settings) for customers (both lazy-loaded).
 - `src/app/DatabaseGate.tsx`: shows setup instructions when no database is configured (dev only in practice: production builds fall back to `/api/db`).
 
 ## Source areas
 
 | Area | Path | Responsibility |
 |---|---|---|
-| CRM config | `src/config/crm.ts` | Labels, stages, statuses, industries, currency: the file to edit to adapt the CRM |
+| Helpdesk config | `src/config/helpdesk.ts` | Statuses, priorities, roles, locale, page size: the file to edit to adapt the vocabulary |
 | Database | `src/db/` | `schema.ts` (all tables), `client.ts` (Drizzle over the Data API), `helpers.ts` (search, paging types) |
-| Features | `src/features/<entity>/` | `api.ts` data access + entity dialogs/components for companies, contacts, deals, activities, dashboard, auth |
-| Pages | `src/pages/` | Route-level views: landing, auth, dashboard, lists, details, tasks, settings, 404 |
-| App shell | `src/components/layout/` | Sidebar layout, nav items, brand mark, theme toggle |
-| Public site | `src/components/site/` | Site header, footer, landing product preview |
-| CRM building blocks | `src/components/crm/` | Page header, badges, pickers, dialogs, pager, empty/error states |
-| UI primitives | `src/components/ui/` | The shadcn components in use, restyled to `DESIGN.md`: alert-dialog, button, card, checkbox, command, dialog, dropdown-menu, input, label, popover, select, sheet, skeleton, spinner, table, tabs, textarea, toaster |
-| Icons | `src/components/icons.ts` | The 42 icons the app uses, inlined from Lucide (ISC). Add new ones here |
+| Features | `src/features/<area>/` | `tickets` (agent queries, `Thread`, `ReplyBox`, the shared `ThreadMessage` type), `customers`, `users` (agents), `portal` (customer API client, dashboard stats, default intro), `branding` (company name, logo, portal intro context), `settings` (shared profile form, URL validation), `auth` (session context, route guard) |
+| Pages | `src/pages/` | Route-level views: landing, auth, forgot/reset password, tickets (Inbox + All), ticket detail, customers, customer detail, settings, portal (dashboard, tickets, new ticket, ticket, settings), 404 |
+| App shells | `src/components/layout/` | `SidebarShell` shared by the agent (`AppLayout`) and customer (`PortalLayout`) shells, nav items, brand mark, theme toggle |
+| Public site | `src/components/site/` | Site header, footer, auth card, landing product preview |
+| Shared pieces | `src/components/common/` | Page header, avatar, badges, option select, search, pager, form field, settings card, empty/error states |
+| Charts | `src/components/charts/` | `ColumnChart` (single series, tooltips, hidden table), `BarList` (labelled horizontal bars), `scale.ts` (clean ticks) |
+| UI primitives | `src/components/ui/` | The shadcn components in use, restyled to `DESIGN.md`: button, card, input, label, select, sheet, skeleton, spinner, table, textarea, toaster |
+| Icons | `src/components/icons.ts` | The 31 icons the app uses, inlined from Lucide (ISC). Add new ones here |
 | Hooks | `src/hooks/` | `use-form` (form state + validation), `use-async`, `use-mutation`, `use-list-params` (URL state), `use-debounced-value` |
-| Libs | `src/lib/` | `env.ts` (only place browser env is read; picks the Data API URL), `api.ts` (HTTP), `format.ts` (money, `Intl` dates, names), `toast.ts` (toast store), `utils.ts` |
+| Libs | `src/lib/` | `env.ts` (only place browser env is read; picks the Data API URL), `api.ts` (HTTP), `format.ts` (`Intl` dates, ticket numbers, initials), `toast.ts` (toast store), `utils.ts` |
 | Styles | `src/styles/globals.css` | Design tokens (light/dark) + `rx-*` helper classes |
 
 ## Server
@@ -33,16 +34,20 @@ Server code lives in `server/`; `api/` holds thin Vercel function wrappers and `
 
 | Path | Responsibility |
 |---|---|
-| `server/auth.ts` | Auth API handler: signup, login, logout, me. scrypt hashes, DB-backed sessions |
+| `server/auth.ts` | Auth API: signup, agent signup, login, logout, me, forgot/reset password, profile. Roles, scrypt hashes, DB-backed sessions |
+| `server/portal.ts` | Customer portal API: branding (incl. portal intro), my tickets, one ticket without internal notes, create ticket, reply |
 | `server/db.ts` | Data API handler and SQL guard, shared by the local proxy and `/api/db` |
+| `server/http.ts` | JSON body, response, cookie and routing helpers shared by the handlers |
+| `server/env.ts` | Reads the server-only settings (`TURSO_*`, `AGENT_SIGNUP_CODE`, `APP_URL`) |
 | `api/auth/[action].ts` | Vercel function wrapping `server/auth.ts` |
-| `api/db/[action].ts` | Vercel function serving the Data API at `/api/db/*`, session-checked |
-| `scripts/local-auth-api.ts` | Serves `/api/auth/*` from the Vite dev/preview server |
-| `scripts/local-db-proxy.ts` | Dev-only stand-in for the RiverX Data API (`/__local-db/v1`), key-checked, wrapping `server/db.ts` |
+| `api/portal/[action].ts` | Vercel function wrapping `server/portal.ts` |
+| `api/db/[action].ts` | Vercel function serving the Data API at `/api/db/*`, admin/agent sessions only |
+| `scripts/local-api.ts` | Serves `/api/auth/*` and `/api/portal/*` from the Vite dev/preview server |
+| `scripts/local-db-proxy.ts` | Dev-only stand-in for the RiverX Data API (`/__local-db/v1`), key- and session-checked, wrapping `server/db.ts` |
 
 ## Root config
 
-`package.json` (includes `pnpm.overrides` that keep a single `esbuild`), `vite.config.ts` (SWC React plugin + local DB proxy + local auth API), `tsconfig.json`, `tailwind.config.js`, `postcss.config.js` (Tailwind only), `components.json`, `drizzle.config.ts`, `vercel.json`, `.env.example`.
+`package.json` (includes `pnpm.overrides` that keep a single `esbuild`), `vite.config.ts` (SWC React plugin + local DB proxy + local API), `tsconfig.json`, `tailwind.config.js`, `postcss.config.js` (Tailwind only), `components.json`, `drizzle.config.ts`, `vercel.json`, `.env.example` (every variable, empty), `.gitignore`.
 
 ## Other scripts
 

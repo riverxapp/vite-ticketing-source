@@ -1,16 +1,20 @@
-import { Building2, CheckSquare, Handshake, LayoutDashboard, Settings, Users, type IconComponent } from "@/components/icons";
-import { crmConfig } from "@/config/crm";
+import { Inbox, LayoutDashboard, Settings, Ticket, Users, type IconComponent } from "@/components/icons";
 
 export type NavItem = { to: string; label: string; icon: IconComponent; end?: boolean };
 
-const { labels } = crmConfig;
-
+/** Agent dashboard. */
 export const navItems: NavItem[] = [
-  { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/app/companies", label: labels.company.plural, icon: Building2 },
-  { to: "/app/contacts", label: labels.contact.plural, icon: Users },
-  { to: "/app/deals", label: labels.deal.plural, icon: Handshake },
-  { to: "/app/tasks", label: labels.task.plural, icon: CheckSquare },
+  { to: "/app", label: "Inbox", icon: Inbox, end: true },
+  { to: "/app/tickets", label: "All tickets", icon: Ticket },
+  { to: "/app/customers", label: "Customers", icon: Users },
 ];
 
 export const secondaryNavItems: NavItem[] = [{ to: "/app/settings", label: "Settings", icon: Settings }];
+
+/** Customer portal. */
+export const portalNavItems: NavItem[] = [
+  { to: "/portal", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/portal/tickets", label: "Tickets", icon: Ticket },
+];
+
+export const portalSecondaryNavItems: NavItem[] = [{ to: "/portal/settings", label: "Settings", icon: Settings }];

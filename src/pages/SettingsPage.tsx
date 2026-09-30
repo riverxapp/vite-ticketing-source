@@ -1,92 +1,93 @@
-import { useState } from "react";
-import { CheckCircle2, Database, XCircle } from "@/components/icons";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/crm/PageHeader";
-import { ToneBadge } from "@/components/crm/ToneBadge";
-import { crmConfig, type Option } from "@/config/crm";
-import { checkDatabaseHealth, isDatabaseConfigured } from "@/db/client";
-import { env } from "@/lib/env";
+import { useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/common/Field";
+import { PageHeader } from "@/components/common/PageHeader";
+import { SettingsCard } from "@/components/common/SettingsCard";
+import { useAuth } from "@/features/auth/use-auth";
+import { saveBranding } from "@/features/branding/api";
+import { useBranding } from "@/features/branding/use-branding";
+import { ProfileSettings } from "@/features/settings/ProfileSettings";
+import { validUrl } from "@/features/settings/validation";
+import { defaultPortalIntro } from "@/features/portal/intro";
+import { useForm } from "@/hooks/use-form";
+import { errorMessage } from "@/lib/format";
+import { toast } from "@/lib/toast";
 
-function OptionList({ title, options, note }: { title: string; options: readonly Option[]; note?: (o: Option) => string }) {
+const MAX_INTRO = 2000;
+
+function HelpdeskSettings() {
+  const { user } = useAuth();
+  const branding = useBranding();
+  const isAdmin = user?.role === "admin";
+  const { register, handleSubmit, reset, watch, formState } = useForm({ defaultValues: { companyName: "", logoUrl: "", portalIntro: "" } });
+  const { errors } = formState;
+
+  // Branding loads after the page mounts; fill the form once it arrives.
+  useEffect(() => {
+    reset({ companyName: branding.companyName ?? "", logoUrl: branding.logoUrl ?? "", portalIntro: branding.portalIntro ?? "" });
+  }, [branding.companyName, branding.logoUrl, branding.portalIntro, reset]);
+
+  const onSubmit = handleSubmit(async (values) => {
+    try {
+      await saveBranding({
+        companyName: values.companyName.trim() || null,
+        logoUrl: values.logoUrl.trim() || null,
+        portalIntro: values.portalIntro.trim() || null,
+      });
+      branding.reload();
+      toast.success("Helpdesk settings saved");
+    } catch (e) {
+      toast.error("Couldn’t save helpdesk settings", { description: errorMessage(e) });
+    }
+  });
+
+  const logo = watch("logoUrl").trim();
+  const intro = watch("portalIntro");
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium">{title}</h3>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((o) => (
-          <span key={o.value} className="inline-flex items-center gap-1">
-            <ToneBadge options={options} value={o.value} />
-            {note ? <span className="text-xs text-muted-foreground">{note(o)}</span> : null}
-          </span>
-        ))}
-      </div>
-    </div>
+    <SettingsCard
+      title="Helpdesk"
+      description={isAdmin ? "Your brand and welcome message on the customer portal, login pages and sidebar." : "Only admins can change the helpdesk settings."}
+      onSubmit={onSubmit}
+      pending={formState.isSubmitting}
+      disabled={!isAdmin}
+    >
+      <FormField label="Company name" htmlFor="helpdesk-name">
+        <Input id="helpdesk-name" placeholder={branding.name} disabled={!isAdmin} {...register("companyName")} />
+      </FormField>
+      <FormField label="Company logo URL" htmlFor="helpdesk-logo" error={errors.logoUrl?.message}>
+        <Input id="helpdesk-logo" type="url" placeholder="https://…/logo.png" className="font-mono" disabled={!isAdmin} {...register("logoUrl", { validate: validUrl })} />
+      </FormField>
+      {logo && validUrl(logo) === true ? (
+        <div className="flex items-center gap-3 border bg-muted p-3">
+          <img src={logo} alt="Logo preview" className="h-10 w-10 object-contain" />
+          <span className="text-sm font-semibold">{watch("companyName").trim() || branding.name}</span>
+        </div>
+      ) : null}
+      <FormField label="Portal introduction" htmlFor="helpdesk-intro" error={errors.portalIntro?.message}>
+        <Textarea
+          id="helpdesk-intro"
+          rows={5}
+          placeholder={defaultPortalIntro(watch("companyName").trim() || branding.name)}
+          disabled={!isAdmin}
+          {...register("portalIntro", { validate: (v) => v.length <= MAX_INTRO || `Keep it under ${MAX_INTRO.toLocaleString()} characters` })}
+        />
+        <p className="flex justify-between gap-2 text-xs text-muted-foreground">
+          <span>Shown at the top of every customer’s dashboard. Plain text; line breaks are kept. Leave empty for the default.</span>
+          <span className="shrink-0 font-mono tabular-nums">{intro.length}/{MAX_INTRO}</span>
+        </p>
+      </FormField>
+    </SettingsCard>
   );
 }
 
 export function SettingsPage() {
-  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const [checking, setChecking] = useState(false);
-
-  async function check() {
-    setChecking(true);
-    try {
-      const result = await checkDatabaseHealth();
-      setStatus({ ok: true, message: `Connected${result.mode ? ` (${String(result.mode)})` : ""}` });
-    } catch (e) {
-      setStatus({ ok: false, message: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setChecking(false);
-    }
-  }
-
   return (
     <>
-      <PageHeader eyebrow="Workspace" title="Settings" description="Workspace configuration and database status." />
-      <div className="grid max-w-4xl gap-6 p-4 sm:p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Database className="h-4 w-4" /> Database</CardTitle>
-            <CardDescription>Turso (libSQL) via the Data API.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-muted-foreground">Endpoint</span>
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{env.dbUrl || "not configured"}</code>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" size="sm" onClick={check} disabled={!isDatabaseConfigured || checking}>
-                {checking ? "Checking…" : "Test connection"}
-              </Button>
-              {status ? (
-                <span className={`inline-flex items-center gap-1.5 font-mono text-xs ${status.ok ? "text-success" : "text-destructive"}`}>
-                  {status.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                  {status.message}
-                </span>
-              ) : null}
-            </div>
-            <p className="border border-amber-600/35 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
-              This database has no end-user authentication: anyone with the app URL can read and write it. Add auth and a
-              server-side API before storing real customer data.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>CRM configuration</CardTitle>
-            <CardDescription>
-              Edit <code className="rounded bg-muted px-1">src/config/crm.ts</code> to rename entities, change pipeline stages,
-              statuses, industries and currency ({crmConfig.currency}).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <OptionList title="Deal stages" options={crmConfig.dealStages} note={(o) => `${crmConfig.dealStages.find((s) => s.value === o.value)?.probability}%`} />
-            <OptionList title="Company lifecycles" options={crmConfig.companyLifecycles} />
-            <OptionList title="Contact statuses" options={crmConfig.contactStatuses} />
-            <OptionList title="Industries" options={crmConfig.industries} />
-          </CardContent>
-        </Card>
+      <PageHeader eyebrow="Helpdesk" title="Settings" description="Your profile and your helpdesk’s branding." />
+      <div className="grid max-w-3xl gap-6 p-4 sm:p-6">
+        <ProfileSettings description="How customers and teammates see you." />
+        <HelpdeskSettings />
       </div>
     </>
   );

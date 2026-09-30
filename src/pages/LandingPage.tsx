@@ -4,32 +4,29 @@ import { Button } from "@/components/ui/button";
 import { ProductPreview } from "@/components/site/ProductPreview";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
-import { crmConfig } from "@/config/crm";
+import { homeFor } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/use-auth";
-
-const { labels } = crmConfig;
+import { useBranding } from "@/features/branding/use-branding";
 
 export function LandingPage() {
   const { user } = useAuth();
+  const { name } = useBranding();
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <SiteHeader />
       <main className="flex-1 bg-background">
         <section className="mx-auto flex max-w-6xl flex-col items-center px-4 pb-20 pt-16 text-center sm:px-6 sm:pt-24">
-          <p className="rx-meta rx-mark">
-            {[labels.company.plural, labels.contact.plural, labels.deal.plural, labels.task.plural].join(" · ")}
-          </p>
+          <p className="rx-meta rx-mark">{name} · Support</p>
           <h1 className="mt-5 max-w-3xl text-balance text-[clamp(2.6rem,5.2vw,4.4rem)] font-bold leading-[1.05] tracking-[-0.03em] text-headline">
-            Every relationship, every deal, one workspace.
+            How can we help?
           </h1>
           <p className="mt-5 max-w-xl text-[1.02rem] text-muted-foreground">
-            A focused CRM for tracking the {labels.company.plural.toLowerCase()} you work with, the people inside them, and every{" "}
-            {labels.deal.singular.toLowerCase()} from first call to close.
+            Open a ticket, and follow the whole conversation with our support team in one place.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-5">
             <Button asChild size="lg" className="px-6">
-              <Link to={user ? "/app" : "/signup"}>
-                {user ? "Open dashboard" : "Get started"}
+              <Link to={user ? homeFor(user) : "/portal/tickets/new"}>
+                {user ? "Go to my dashboard" : "Submit a ticket"}
                 <ArrowRight />
               </Link>
             </Button>

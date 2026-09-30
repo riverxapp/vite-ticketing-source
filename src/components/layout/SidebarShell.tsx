@@ -3,10 +3,11 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Menu } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Avatar } from "@/components/common/Avatar";
 import { useAuth } from "@/features/auth/use-auth";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "./BrandMark";
-import { navItems, secondaryNavItems, type NavItem } from "./nav";
+import type { NavItem } from "./nav";
 import { ThemeToggle } from "./ThemeToggle";
 
 function NavList({ items }: { items: NavItem[] }) {
@@ -33,26 +34,36 @@ function NavList({ items }: { items: NavItem[] }) {
   );
 }
 
-function SidebarBody() {
+type ShellProps = {
+  /** Where the brand mark links: the audience's home. */
+  home: string;
+  /** Small label above the main nav. */
+  section: string;
+  items: NavItem[];
+  secondaryItems: NavItem[];
+};
+
+function SidebarBody({ home, section, items, secondaryItems }: ShellProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-14 shrink-0 items-center border-b px-4">
-        <BrandMark to="/app" />
+        <BrandMark to={home} />
       </div>
       <nav className="flex-1 overflow-y-auto py-3" aria-label="Main">
-        <p className="rx-meta px-4 pb-2">Workspace</p>
-        <NavList items={navItems} />
+        <p className="rx-meta px-4 pb-2">{section}</p>
+        <NavList items={items} />
       </nav>
       <div className="border-t py-2">
-        <NavList items={secondaryNavItems} />
+        <NavList items={secondaryItems} />
       </div>
       <div className="flex items-center gap-2 border-t px-4 py-3">
+        {user ? <Avatar name={user.name} src={user.avatar} /> : null}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{user?.name}</p>
-          <p className="truncate font-mono text-[0.7rem] text-muted-foreground">{user?.email}</p>
+          <p className="truncate font-mono text-[0.7rem] uppercase tracking-[0.06em] text-muted-foreground">{user?.role}</p>
         </div>
         <ThemeToggle />
         <Button
@@ -72,7 +83,8 @@ function SidebarBody() {
   );
 }
 
-export function AppLayout() {
+/** Sidebar layout shared by the agent dashboard (AppLayout) and the customer portal (PortalLayout). */
+export function SidebarShell(props: ShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -81,13 +93,13 @@ export function AppLayout() {
   return (
     <div className="flex min-h-svh bg-background">
       <aside className="sticky top-0 hidden h-svh w-60 shrink-0 border-r bg-sidebar md:block">
-        <SidebarBody />
+        <SidebarBody {...props} />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-64 bg-sidebar p-0" aria-describedby={undefined}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <SidebarBody />
+          <SidebarBody {...props} />
         </SheetContent>
       </Sheet>
 
@@ -96,7 +108,7 @@ export function AppLayout() {
           <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setMobileOpen(true)} aria-label="Open navigation">
             <Menu />
           </Button>
-          <BrandMark to="/app" />
+          <BrandMark to={props.home} />
         </header>
         <main className="flex-1">
           <Outlet />

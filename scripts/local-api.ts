@@ -1,26 +1,31 @@
 import type { Plugin } from "vite";
-import { handleAuthRequest } from "../server/auth";
-import { loadTursoEnv } from "./local-db-proxy";
+import { handleAuthRequest, type Env } from "../server/auth";
+import { handlePortalRequest } from "../server/portal";
+import { loadServerEnv } from "./local-db-proxy";
+
+type Req = Parameters<typeof handleAuthRequest>[0];
+type Res = Parameters<typeof handleAuthRequest>[1];
 
 /**
- * Serves the auth API (/api/auth/*) from the Vite dev and preview servers, so
- * login works locally exactly as it does behind the Vercel function.
+ * Serves the auth API (/api/auth/*) and the customer portal API (/api/portal/*)
+ * from the Vite dev and preview servers, so they work locally exactly as they
+ * do behind the Vercel functions.
  */
-export function localAuthApi(): Plugin {
-  let env: { url?: string; authToken?: string } = {};
+export function localApi(): Plugin {
+  let env: Env = {};
 
-  const middleware = (req: Parameters<typeof handleAuthRequest>[0], res: Parameters<typeof handleAuthRequest>[1], next: () => void) => {
-    if (!req.url?.startsWith("/api/auth/")) return next();
-    handleAuthRequest(req, res, env).then((handled) => {
+  const middleware = (req: Req, res: Res, next: () => void) => {
+    const handler = req.url?.startsWith("/api/auth/") ? handleAuthRequest : req.url?.startsWith("/api/portal/") ? handlePortalRequest : null;
+    if (!handler) return next();
+    handler(req, res, env).then((handled) => {
       if (!handled) next();
     }, next);
   };
 
   return {
-    name: "local-auth-api",
+    name: "local-api",
     config(_, { mode }) {
-      const { url, authToken } = loadTursoEnv(mode);
-      env = { url, authToken };
+      env = loadServerEnv(mode);
     },
     configureServer(server) {
       server.middlewares.use(middleware);

@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import { localAuthApi } from "./scripts/local-auth-api";
+import { localApi } from "./scripts/local-api";
 import { localDbProxy } from "./scripts/local-db-proxy";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,7 +25,7 @@ if (repoName) {
 }
 
 export default defineConfig({
-  plugins: [react(), localDbProxy(), localAuthApi()],
+  plugins: [react(), localDbProxy(), localApi()],
   server: {
     host: "0.0.0.0",
     port,

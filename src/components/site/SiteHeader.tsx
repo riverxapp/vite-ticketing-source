@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { homeFor, isStaff } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +27,11 @@ export function SiteHeader() {
           )}
           <ThemeToggle />
           <Button asChild size="sm">
-            <Link to={user ? "/app" : "/signup"}>{user ? "Open dashboard" : "Get started"}</Link>
+            {user ? (
+              <Link to={homeFor(user)}>{isStaff(user) ? "Open inbox" : "My dashboard"}</Link>
+            ) : (
+              <Link to="/portal/tickets/new">Submit a ticket</Link>
+            )}
           </Button>
         </nav>
       </div>
