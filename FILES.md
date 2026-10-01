@@ -8,7 +8,7 @@ Structural index for the helpdesk template.
 - `src/main.tsx`: React mount.
 - `src/app/App.tsx`: providers (theme, auth, branding, toasts) + router.
 - `src/app/routes.tsx`: every route. `/`, `/login`, `/signup`, `/agent/signup`, `/forgot-password`, `/reset-password` are public; `/app/*` is for admins and agents, `/portal/*` (dashboard, tickets, settings) for customers (both lazy-loaded).
-- `src/app/DatabaseGate.tsx`: shows setup instructions when no database is configured (dev only in practice: production builds fall back to `/api/db`).
+- `src/app/DatabaseGate.tsx`: shows setup instructions when no database is configured (dev only in practice: production builds always use `/api/db`).
 
 ## Source areas
 

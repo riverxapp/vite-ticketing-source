@@ -66,8 +66,8 @@ pnpm dev                    # http://localhost:5173
 |---|---|---|
 | `VITE_APP_NAME` | browser | Fallback name until an admin sets the company name in Settings (default `RiverX Helpdesk`) |
 | `VITE_API_BASE_URL` | browser | Base for `src/lib/api.ts` (default `/__local-api` in `pnpm dev`, `/api` in production builds). Never point the dev server at `/api`: a RiverX workspace preview routes `/api/*` to RiverX |
-| `VITE_RIVERX_DB_URL` / `VITE_RIVERX_DB_KEY` | browser | RiverX Data API. Injected by RiverX; leave empty locally and on your own Vercel project |
-| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | **server only** | drizzle-kit, the local DB proxy, and the auth, portal and data API functions. Never prefix with `VITE_` |
+| `VITE_RIVERX_DB_URL` / `VITE_RIVERX_DB_KEY` | browser | RiverX Data API for the dev server in the RiverX preview. Injected by RiverX; production builds ignore them. Leave empty locally and on your own Vercel project |
+| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | **server only** | drizzle-kit, the local DB proxy, and the auth, portal and data API functions. Set on Vercel by RiverX when you publish. Never prefix with `VITE_` |
 | `AGENT_SIGNUP_CODE` | **server only** | Team invite code for agent signup. The first agent account (the admin) needs none; without this set, agent signup closes after it |
 | `APP_URL` | **server only** | Public origin used in password reset links, e.g. `https://support.example.com`. Defaults to the request's origin; set it in production |
 
@@ -85,9 +85,9 @@ The browser code is the same everywhere; only the Data API behind it changes:
 
 | Where | Data API | Authorised by |
 |---|---|---|
-| RiverX | RiverX's hosted endpoint, from `VITE_RIVERX_DB_URL` (see `DATABASE.md`) | Publishable key `VITE_RIVERX_DB_KEY` |
+| RiverX preview (`pnpm dev`) | RiverX's hosted endpoint, from `VITE_RIVERX_DB_URL` (see `DATABASE.md`) | Publishable key `VITE_RIVERX_DB_KEY` |
 | `pnpm dev`, no RiverX | `/__local-db/v1`, served by `scripts/local-db-proxy.ts` when `TURSO_*` are set | Random per-process key + admin or agent session |
-| Production build, no RiverX (e.g. Vercel) | `/api/db/*`, served by `api/db/[action].ts` | Admin or agent session cookie |
+| Production build (published from RiverX, or your own Vercel deploy) | `/api/db/*`, served by `api/db/[action].ts` | Admin or agent session cookie |
 
 - The local proxy and `/api/db` share `server/db.ts`: the same contract and SQL guard (no DDL, one statement per query, no SQL touching `auth_*` tables). The Turso token stays on the server.
 - **Auth and the portal** run only on the server: Vite middleware in dev (`scripts/local-api.ts`) and Vercel functions in production (`api/auth/[action].ts`, `api/portal/[action].ts`). They share `server/auth.ts` and `server/portal.ts`.
@@ -96,9 +96,9 @@ The browser code is the same everywhere; only the Data API behind it changes:
 
 The build is a static SPA plus three serverless functions (`/api/auth/*`, `/api/portal/*`, `/api/db/*`). `vercel.json` rewrites client routes to `index.html`.
 
-1. In Vercel → Project → Settings → Environment Variables, set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `APP_URL` and (to let teammates join) `AGENT_SIGNUP_CODE`, all server-only with no `VITE_` prefix, for each environment you deploy.
-2. Run `pnpm db:push` against that database once so the tables exist.
-3. Leave `VITE_RIVERX_DB_*` unset: agent data then goes through `/api/db`. Under RiverX, its injected `VITE_RIVERX_DB_*` take precedence.
+1. In Vercel → Project → Settings → Environment Variables, set `APP_URL` and (to let teammates join) `AGENT_SIGNUP_CODE`, all server-only with no `VITE_` prefix, for each environment you deploy. Publishing from RiverX sets `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` for you, as sensitive (server-only) variables for production and preview, but not these. Deploying yourself, set `TURSO_*` too.
+2. Run `pnpm db:push` against that database once so the tables exist. Published from RiverX, it is the same database as the preview.
+3. Production builds ignore `VITE_RIVERX_DB_*`: agent data always goes through `/api/db`, including when published from RiverX.
 4. Redeploy after changing env vars. `VITE_*` values are inlined at build time.
 
 `package.json` sets `"type": "module"`, so Vercel runs the functions as native ES modules. Relative imports in `api/` and `server/` must end in `.js` (`from "../../server/auth.js"`); without it the function fails to load with `FUNCTION_INVOCATION_FAILED`.
@@ -106,7 +106,7 @@ The build is a static SPA plus three serverless functions (`/api/auth/*`, `/api/
 | Symptom on Vercel | Cause / fix |
 |---|---|
 | `FUNCTION_INVOCATION_FAILED` | Usually a relative import without `.js` in `api/` or `server/`. Check the function logs for `ERR_MODULE_NOT_FOUND` |
-| Auth returns 503 "Auth is not configured" | `TURSO_*` missing from that environment's variables |
+| Auth returns 503 "Auth is not configured" | `TURSO_*` missing from that environment's variables. Published from RiverX, the build predates RiverX setting `TURSO_*`: republish from RiverX, or generate a new key from the **Data** tab, which also redeploys |
 | "Connect a database to get started" | The deployed build predates `/api/db`. Redeploy from the current `main` |
 | Data requests return 401 "Log in to continue." | No valid session cookie. Log in again |
 | Data requests return 403 "Only agents can use the Data API." | A customer account opened the agent dashboard. Customers belong in `/portal` |
@@ -114,11 +114,11 @@ The build is a static SPA plus three serverless functions (`/api/auth/*`, `/api/
 
 ## Security notes
 
-- **Internal notes and other customers' tickets are protected only on our own Data API** (the local proxy and `/api/db`), which accept admin and agent sessions only. Customers use `/api/portal/*`, which returns only their own tickets and never internal notes.
-- **Under RiverX's hosted Data API, that protection is gone.** Its key ships in the browser bundle, so anyone with the app URL, customers included, can read every table, internal notes included. Don't run a real helpdesk on it.
+- **Internal notes and other customers' tickets are protected by our own Data API** (the local proxy and `/api/db`, which every published app uses), which accept admin and agent sessions only. Customers use `/api/portal/*`, which returns only their own tickets and never internal notes.
+- **The RiverX preview does not have that protection.** It uses RiverX's hosted Data API with a publishable key that ships in the preview's bundle, so anyone who gets that key, customers included, can read every table, internal notes included. The preview and the published app share one database, so this reaches real tickets too. The Data tab's **Key** button replaces the server token (`TURSO_AUTH_TOKEN`), not this key.
 - Every agent can read and write all helpdesk data. "Admin only" (helpdesk branding and the portal intro) is enforced in the UI.
 - Password reset links are only logged on the server (and shown on the page in dev) until you connect an email provider in `deliverResetLink` in `server/auth.ts`.
-- Under RiverX's hosted Data API, the `auth_*` tables are readable with the public key. Passwords are scrypt-hashed and only token hashes are stored, but for real deployments keep auth in a database the public key cannot reach.
+- With the preview's publishable key, the `auth_*` tables are readable too. Passwords are scrypt-hashed and only token hashes are stored. `/api/db` rejects any SQL that touches them.
 
 ## Dependency budget
 
