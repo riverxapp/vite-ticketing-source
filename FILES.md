@@ -36,14 +36,14 @@ Server code lives in `server/`; `api/` holds thin Vercel function wrappers and `
 |---|---|
 | `server/auth.ts` | Auth API: signup, agent signup, login, logout, me, forgot/reset password, profile. Roles, scrypt hashes, DB-backed sessions |
 | `server/portal.ts` | Customer portal API: branding (incl. portal intro), my tickets, one ticket without internal notes, create ticket, reply |
-| `server/db.ts` | Data API handler and SQL guard, shared by the local proxy and `/api/db` |
+| `server/db.ts` | Data API handler and SQL guard, shared by the dev proxy and `/api/db` |
 | `server/http.ts` | JSON body, response, cookie and routing helpers shared by the handlers |
 | `server/env.ts` | Reads the server-only settings (`TURSO_*`, `AGENT_SIGNUP_CODE`, `APP_URL`) |
 | `api/auth/[action].ts` | Vercel function wrapping `server/auth.ts` |
 | `api/portal/[action].ts` | Vercel function wrapping `server/portal.ts` |
 | `api/db/[action].ts` | Vercel function serving the Data API at `/api/db/*`, admin/agent sessions only |
 | `scripts/local-api.ts` | Serves the auth and portal APIs from Vite: `/__local-api/*` in dev, `/api/*` in preview |
-| `scripts/local-db-proxy.ts` | Dev-only stand-in for the RiverX Data API (`/__local-db/v1`), key- and session-checked, wrapping `server/db.ts` |
+| `scripts/local-db-proxy.ts` | Dev server's Data API (`/__local-db/v1`) for the RiverX preview and `pnpm dev`, key- and session-checked, wrapping `server/db.ts` |
 
 ## Root config
 
