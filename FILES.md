@@ -42,7 +42,7 @@ Server code lives in `server/`; `api/` holds thin Vercel function wrappers and `
 | `api/auth/[action].ts` | Vercel function wrapping `server/auth.ts` |
 | `api/portal/[action].ts` | Vercel function wrapping `server/portal.ts` |
 | `api/db/[action].ts` | Vercel function serving the Data API at `/api/db/*`, admin/agent sessions only |
-| `scripts/local-api.ts` | Serves `/api/auth/*` and `/api/portal/*` from the Vite dev/preview server |
+| `scripts/local-api.ts` | Serves the auth and portal APIs from Vite: `/__local-api/*` in dev, `/api/*` in preview |
 | `scripts/local-db-proxy.ts` | Dev-only stand-in for the RiverX Data API (`/__local-db/v1`), key- and session-checked, wrapping `server/db.ts` |
 
 ## Root config

@@ -54,7 +54,7 @@ pnpm dev                    # http://localhost:5173
 | Command | Does |
 |---|---|
 | `pnpm dev` | Dev server with the local DB proxy and the auth and portal APIs |
-| `pnpm build` / `pnpm preview` | Production build / serve it. `preview` serves `/api/auth` and `/api/portal` but not `/api/db`, so the agent dashboard needs `pnpm dev` or a Vercel deploy |
+| `pnpm build` / `pnpm preview` | Production build / serve it. `pnpm dev` serves the API at `/__local-api/*`; `preview` serves `/api/auth` and `/api/portal` but not `/api/db`, so the agent dashboard needs `pnpm dev` or a Vercel deploy |
 | `pnpm typecheck` | TypeScript check |
 | `pnpm db:push` | Apply `src/db/schema.ts` to Turso |
 | `pnpm db:studio` | Browse the database with Drizzle Studio |
@@ -65,7 +65,7 @@ pnpm dev                    # http://localhost:5173
 | Variable | Where | Purpose |
 |---|---|---|
 | `VITE_APP_NAME` | browser | Fallback name until an admin sets the company name in Settings (default `RiverX Helpdesk`) |
-| `VITE_API_BASE_URL` | browser | Base for `src/lib/api.ts` (default `/api`) |
+| `VITE_API_BASE_URL` | browser | Base for `src/lib/api.ts` (default `/__local-api` in `pnpm dev`, `/api` in production builds). Never point the dev server at `/api`: a RiverX workspace preview routes `/api/*` to RiverX |
 | `VITE_RIVERX_DB_URL` / `VITE_RIVERX_DB_KEY` | browser | RiverX Data API. Injected by RiverX; leave empty locally and on your own Vercel project |
 | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | **server only** | drizzle-kit, the local DB proxy, and the auth, portal and data API functions. Never prefix with `VITE_` |
 | `AGENT_SIGNUP_CODE` | **server only** | Team invite code for agent signup. The first agent account (the admin) needs none; without this set, agent signup closes after it |
