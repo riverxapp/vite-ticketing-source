@@ -5,7 +5,7 @@ Change boundaries and placement rules for the helpdesk template.
 ## Product shape
 
 - Vite + React SPA: public landing + auth pages, the agent dashboard under `/app`, and the customer portal under `/portal`.
-- Agent data goes through Drizzle over the Data API (`src/db/client.ts`): RiverX's hosted one in the RiverX preview, the dev proxy, or `/api/db` in every production build. Our own Data API accepts admin and agent sessions only.
+- Agent data goes through Drizzle over the Data API (`src/db/client.ts`): the dev proxy in `pnpm dev` (including the RiverX preview), or `/api/db` in every production build. Our own Data API accepts admin and agent sessions only.
 - Customer data goes only through `/api/portal/*` (`server/portal.ts`). Customers never get Data API access.
 - Auth goes through the server API (`server/auth.ts`); the browser never touches `auth_*` tables.
 - Statuses, priorities and roles live in `src/config/helpdesk.ts`, never hard-coded in pages.
