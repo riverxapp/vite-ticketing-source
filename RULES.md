@@ -18,6 +18,7 @@ Change boundaries and placement rules for the helpdesk template.
 2. Route-level views go in `src/pages` (portal pages are prefixed `Portal`); shell composition goes in `src/components/layout`. Both audiences share `SidebarShell`: add nav items in `nav.ts`, not a new layout.
 3. Internal links use `/app/...` (agents) or `/portal/...` (customers) paths.
 4. Gate each tree with `RequireAuth audience="staff" | "customer"`.
+5. Keep `basename: previewBasename` in `createBrowserRouter`. The RiverX editor preview serves the app under `/preview/<session>/__frame/`; without it every route shows the 404 page there. Navigate with `<Link>` / `useNavigate`, never `window.location`, so the prefix is kept.
 
 ## Data
 
